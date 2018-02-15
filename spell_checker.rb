@@ -15,7 +15,7 @@ $language = Hash.new(0)
 #Total words
 $total_words = 0
 #Global regex for removing punctuation
-$remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#]/
+$remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#\"\\\/]/
 #Hash to hold fixed words
 $correction = Hash.new
 
@@ -73,6 +73,7 @@ def initialize_language file_name
     file.each_line do |line|
       #checks for punctuation
       line.gsub!($remove_punctuation, '')
+      line.gsub!(/-/, ' ')
       line.downcase!
       #splits the line into words
       words = line.split(' ').to_a
@@ -211,9 +212,14 @@ def corrections
       possible_matches.each do |word_to_compare|
         similarity[word_to_compare] = match_percentage word, word_to_compare
       end
-      best_match = ''
+      #Hash with the final chance, combining match_percentage and frequency
+      match_chance = Hash.new(0.0)
       similarity.each do |match|
-        if match[1] > similarity[best_match]
+        match_chance[match[0]] = (3 * match[1].to_f + $language[match[0]]) / 4
+      end
+      best_match = ''
+      match_chance.each do |match|
+        if match[1] > match_chance[best_match]
           best_match = match[0]
         end
       end
@@ -257,11 +263,9 @@ def match_percentage incorrect, possible
   ##Compares the two hashes and returns similarity as a decimal
   #The overall percentage and total characters, used to calculate final percentage
   overall_percentage = 0.to_f
-  total_chars = 0
+  total_chars = [incorrect_hash.keys.length, possible_hash.keys.length].max
   #Iterates over the hash for the possible correction
   possible_hash.each do |chars|
-    #increment the total number of characters
-    total_chars += 1
     #Sets char to the actual character
     char = chars[0]
     #Sets value_possible to count in possible hash
