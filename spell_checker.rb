@@ -16,6 +16,8 @@ $language = Hash.new(0)
 $total_words = 0
 #Global regex for removing punctuation
 $remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#]/
+#Hash to hold fixed words
+$correction = Hash.new
 
 #initializes the blank lexicon
 def initialize_lexicon
@@ -178,12 +180,44 @@ def corrections
   #For each word to be looked at
   $words.each do |word_array|
     #If the word is misspelled attempt corrections
-    if word_array[1] == true
+    possible_matches = Array.new
+    if word_array[1] == false
       #Sets word to the actual word, instead of array pair
       word = word_array[0]
       #Same logic as earlier char finders, perhaps turn into seperate method
       first_char, second_char = find_chars word
-      #Find words with similar letters
+      ##Find words with similar letters
+      #Saves the lenght of the word for eaiser access
+      size = word.length
+      #Iterates over words with matching starting letters
+      $lexicon[first_char][second_char].each do |word_compare|
+        #If the size is within one of word to check, adds to possible matches
+        if word_compare.length == size - 1 || word_compare.length == size + 1 || word_compare.length == size
+          possible_matches << word_compare
+        end
+      end
+      #Iterates over lexicon again, except only uses first character, to make sure more words are found
+      'a'.upto 'z' do |char|
+        $lexicon[first_char][char].each do |word_compare|
+          #If the size is within one of word to check, adds to possible matches
+          if word_compare.length == size - 1 || word_compare.length == size + 1 || word_compare.length == size
+            possible_matches << word_compare
+          end
+        end
+      end
+      #Iterate over the possible matches, taking the match with the highest percentage
+      #Hash to hold similarity
+      similarity = Hash.new(0.0)
+      possible_matches.each do |word_to_compare|
+        similarity[word_to_compare] = match_percentage word, word_to_compare
+      end
+      best_match = ''
+      similarity.each do |match|
+        if match[1] > similarity[best_match]
+          best_match = match[0]
+        end
+      end
+      $correction[word] = best_match
     end
   end
 end
@@ -203,6 +237,47 @@ def find_chars word
     second_char = word[0]
   end
   return first_char, second_char
+end
+
+#Calculates the percentage of matches betwee nthe two provided words
+def match_percentage incorrect, possible
+  #Creates character arrays for both words
+  incorrect_array = incorrect.split("")
+  possible_array = possible.split("")
+  #Hashes to hold conut of each char
+  incorrect_hash = Hash.new(0)
+  possible_hash = Hash.new(0)
+  #Counts the characters in each word
+  incorrect_array.each do |char|
+    incorrect_hash[char] += 1
+  end
+  possible_array.each do |char|
+    possible_hash[char] += 1
+  end
+  ##Compares the two hashes and returns similarity as a decimal
+  #The overall percentage and total characters, used to calculate final percentage
+  overall_percentage = 0.to_f
+  total_chars = 0
+  #Iterates over the hash for the possible correction
+  possible_hash.each do |chars|
+    #increment the total number of characters
+    total_chars += 1
+    #Sets char to the actual character
+    char = chars[0]
+    #Sets value_possible to count in possible hash
+    value_possible = chars[1]
+    #Sets value_incorrect to count in incorrect hash
+    value_incorrect = incorrect_hash[char]
+    #If neither value is zero calcluates similarity and adds to overall_percentage, otherwise its 0
+    if value_possible != 0 && value_incorrect != 0
+      min = [value_possible, value_incorrect].min
+      max = [value_possible, value_incorrect].max
+      overall_percentage += (min.to_f / max.to_f)
+    end
+  end
+  #Calculates similarity percentage and returns
+  overall_percentage /= total_chars
+  return overall_percentage
 end
 
 def main_loop
@@ -228,7 +303,8 @@ def main_loop
     if(File.exists?(user_input))
       to_check(user_input)
       spell_check
-      feedback
+      corrections
+      puts $correction
       $words.clear
     else
       puts "Filename invalid, try again"
