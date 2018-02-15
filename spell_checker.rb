@@ -5,7 +5,7 @@
 #Creates internal lexicon using this data structure, Hash -> Hash -> Array
 #Spell checks words from user input
 
-#Global vars
+##Global vars
 #The lexicon, or dictionary
 $lexicon = Hash.new
 #The words to be corrected from text files
@@ -14,6 +14,8 @@ $words = Hash.new
 $language = Hash.new(0)
 #Total words
 $total_words = 0
+#Global regex for removing punctuation
+$remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#]/
 
 #initializes the blank lexicon
 def initialize_lexicon
@@ -41,20 +43,8 @@ def populate_lexicon (file_name)
       #For each line in the file compile into lexicon
       file.each_line do |line|
         line.chomp!
-        first_char = ''
-        second_char = ''
-        #If word is longer than 1 character
-        if(line.length > 1)
-          first_char = line[0]
-          second_char = line[1]
-        #If the word is 1 character long
-        elsif line.length == 1
-          first_char = line[0]
-          second_char = line[0]
-        #If the word doesnt exist/error state
-        else
-          puts "Error in word, length is 0"
-        end
+        #calls helper method
+        first_char, second_char = find_chars line
         #puts "First char: #{first_char}\nSecond char: #{second_char}"
         #Processes word
         if first_char != '' && second_char != ''
@@ -80,8 +70,7 @@ def initialize_language file_name
   until file.eof?
     file.each_line do |line|
       #checks for punctuation
-      remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#]/
-      line.gsub!(remove_punctuation, '')
+      line.gsub!($remove_punctuation, '')
       line.downcase!
       #splits the line into words
       words = line.split(' ').to_a
@@ -94,9 +83,13 @@ def initialize_language file_name
     end
   end
   file.close
+  #For each word in the language calculate the frequency of that word
   $language.each do |word|
+    #Gets the count of times the word appears in the langauge.txt
     value = word[1]
+    #Gets the frequency by dividing count by total words
     temp = (value.to_f / $total_words.to_f).to_f
+    #Sets the value to frequency instead of count
     $language[word[0]] = temp
   end
   puts "Language initialized"
@@ -108,13 +101,13 @@ def to_check file_to_check
   file = File.open(file_to_check, 'r')
   #Reads until the end of the file
   until file.eof?
-    #Clears punctuation to make checking easier
-    remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,]/
     #For each line check the spelling of each word
     file.each_line do |line|
       line.chomp!.downcase!
       #cleans punctuation
-      line.gsub!(remove_punctuation, "")
+      line.gsub!($remove_punctuation, "")
+      #Removes numbers since they can't be spelled wrong
+      line.gsub!(/\d/, "")
       line.split.each do |word|
         $words[word] = false
       end
@@ -124,28 +117,38 @@ end
 
 #Checks the spelling of all words in array
 def spell_check
+  #Temp has to get around iterating blocking hash editing
   temp_hash = Hash.new
+  #For each word hash pair
   $words.each do |word|
+    #Sets default values
     first_char = ''
     second_char = ''
+    #If the word is more than 1 character sets first and second characters appropriatly
     if word[0].length > 1
       first_char = word[0][0]
       second_char = word[0][1]
+    #If the word length is 1 sets first and second char to word
     elsif word[0].length == 1
       first_char = word[0][0]
       second_char = word[0][0]
     end
     #puts "First char: #{first_char}\nSecond char: #{second_char}\nWord: #{word[0]}, length = #{word[0].length}"
-    #Searches lexicon for match
+
+    #Searches lexicon for match, default is false
     match = false
+    #For each word in the lexicon with the same first and second characters checks for equality
     $lexicon[first_char][second_char].each do |check|
+      #If the words are the same sets spelling to true, or correct and breaks out of loop
       if check == word[0]
         match = true
         break;
       end
     end
+    #Sets temp hash to proper values, to be reassigned to word hash after full iterations
     temp_hash[word[0]] = match
   end
+  #Sets words hash with proper values
   temp_hash.each do |temp|
     $words[temp[0]] = temp[1]
   end
@@ -154,13 +157,17 @@ end
 #Prints the words that are spelled wrong
 def feedback
   puts "Spelling errors"
+  #Default errors is 0
   errors = 0
+  #For each word in the word hash
   $words.each do |word|
+    #If the word is spelled wrong prints the word and increments errors
     if word[1] == false
       puts "#{word[0]}"
       errors += 1
     end
   end
+  #If there are no errors states as much
   if errors == 0
     puts "No errors found"
   end
@@ -168,22 +175,34 @@ end
 
 #Finds suggestions for misspelled words
 def corrections
+  #For each word to be looked at
   $words.each do |word_array|
+    #If the word is misspelled attempt corrections
     if word_array[1] == true
+      #Sets word to the actual word, instead of array pair
       word = word_array[0]
-
-      first_char = ''
-      second_char = ''
-      if word.length > 1
-        first_char = word[0]
-        second_char = word[1]
-      elsif word.length == 1
-        first_char = word[0]
-        second_char = word[0]
-      end
-      #Find words with similar letters 
+      #Same logic as earlier char finders, perhaps turn into seperate method
+      first_char, second_char = find_chars word
+      #Find words with similar letters
     end
   end
+end
+
+#Helper method for code clarity
+def find_chars word
+  #Sets default values
+  first_char = ''
+  second_char = ''
+  #If the word length is more than 1, sets first and second chars appropriatly
+  if word.length > 1
+    first_char = word[0]
+    second_char = word[1]
+  #If the length is one sets both to the word
+  elsif word.length == 1
+    first_char = word[0]
+    second_char = word[0]
+  end
+  return first_char, second_char
 end
 
 def main_loop
@@ -198,8 +217,6 @@ def main_loop
   populate_lexicon ARGV[0]
   #creates and fills the language hash
   initialize_language ARGV[1]
-  puts $language
-  #puts $language
   #User input loop
   puts "Please enter file name to be corrected, enter 'q' to quit"
   print '> '
