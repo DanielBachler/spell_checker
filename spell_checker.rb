@@ -12,6 +12,8 @@ $lexicon = Hash.new
 $words = Hash.new
 #A data source for calculating probability of words
 $language = Hash.new(0)
+#Total words
+$total_words = 0
 
 #initializes the blank lexicon
 def initialize_lexicon
@@ -86,11 +88,17 @@ def initialize_language file_name
       #for each word increments the count
       words.each do |word|
         $language[word] += 1
+        $total_words += 1
       end
       #puts "Line: #{line}\nWords: #{words}"
     end
   end
   file.close
+  $language.each do |word|
+    value = word[1]
+    temp = (value.to_f / $total_words.to_f).to_f
+    $language[word[0]] = temp
+  end
   puts "Language initialized"
 end
 
@@ -160,7 +168,22 @@ end
 
 #Finds suggestions for misspelled words
 def corrections
+  $words.each do |word_array|
+    if word_array[1] == true
+      word = word_array[0]
 
+      first_char = ''
+      second_char = ''
+      if word.length > 1
+        first_char = word[0]
+        second_char = word[1]
+      elsif word.length == 1
+        first_char = word[0]
+        second_char = word[0]
+      end
+      #Find words with similar letters 
+    end
+  end
 end
 
 def main_loop
@@ -175,6 +198,8 @@ def main_loop
   populate_lexicon ARGV[0]
   #creates and fills the language hash
   initialize_language ARGV[1]
+  puts $language
+  #puts $language
   #User input loop
   puts "Please enter file name to be corrected, enter 'q' to quit"
   print '> '
