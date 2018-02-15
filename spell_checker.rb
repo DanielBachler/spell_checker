@@ -6,8 +6,27 @@
 #Spell checks words from user input
 
 #Global vars
+#The lexicon, or dictionary
 $lexicon = Hash.new
+#The words to be corrected from text files
 $words = Hash.new
+#A data source for calculating probability of words
+$language = Hash.new(0)
+
+#initializes the blank lexicon
+def initialize_lexicon
+  #Outer refrence, for outermost hash
+  'a'.upto 'z' do |char|
+    $lexicon[char] = Hash.new
+  end
+  #Creates the internal hash that will hold array of words
+  'a'.upto 'z' do |counter|
+    'a'.upto 'z' do |internal|
+      $lexicon[counter][internal] = Array.new
+    end
+  end
+  puts "Lexicon initialized"
+end
 
 #Populates the lexicon from the given file.  Assumed that the given file
 #is a list of english words
@@ -45,6 +64,7 @@ def populate_lexicon (file_name)
         end
       end
     end
+    file.close
     puts "Lexicon populated"
   rescue
     puts "Error in populating lexicon"
@@ -52,25 +72,32 @@ def populate_lexicon (file_name)
   end
 end
 
-#initializes the blank lexicon
-def initialize_lexicon
-  #Outer refrence, for outermost hash
-  'a'.upto 'z' do |char|
-    $lexicon[char] = Hash.new
-  end
-  #Creates the internal hash that will hold array of words
-  'a'.upto 'z' do |counter|
-    'a'.upto 'z' do |internal|
-      $lexicon[counter][internal] = Array.new
+#Fills the language hash
+def initialize_language file_name
+  file = File.open(file_name, 'r')
+  until file.eof?
+    file.each_line do |line|
+      #checks for punctuation
+      remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#]/
+      line.gsub!(remove_punctuation, '')
+      line.downcase!
+      #splits the line into words
+      words = line.split(' ').to_a
+      #for each word increments the count
+      words.each do |word|
+        $language[word] += 1
+      end
+      #puts "Line: #{line}\nWords: #{words}"
     end
   end
-  puts "Lexicon initialized"
+  file.close
+  puts "Language initialized"
 end
 
 #Reads the file of words to check
-def to_check to_check
+def to_check file_to_check
   #Opens the file to check
-  file = File.open(to_check, 'r')
+  file = File.open(file_to_check, 'r')
   #Reads until the end of the file
   until file.eof?
     #Clears punctuation to make checking easier
@@ -93,14 +120,14 @@ def spell_check
   $words.each do |word|
     first_char = ''
     second_char = ''
-    if word.length > 1
+    if word[0].length > 1
       first_char = word[0][0]
       second_char = word[0][1]
-    elsif word.length == 1
+    elsif word[0].length == 1
       first_char = word[0][0]
       second_char = word[0][0]
     end
-    #puts "First char: #{first_char}\nSecond char: #{second_char}"
+    #puts "First char: #{first_char}\nSecond char: #{second_char}\nWord: #{word[0]}, length = #{word[0].length}"
     #Searches lexicon for match
     match = false
     $lexicon[first_char][second_char].each do |check|
@@ -131,20 +158,42 @@ def feedback
   end
 end
 
+#Finds suggestions for misspelled words
+def corrections
+
+end
+
 def main_loop
+  #Checks that the user has specified the correct amount of files on startup, assumes they are correct
   if ARGV.length < 2
-    puts "Need to specify lexicon source and file to check"
+    puts "Need to specify lexicon source and language source"
     exit 4
   end
   #Creates the initial lexicon object
   initialize_lexicon
   #Populates the lexicon object with the words from the given file
   populate_lexicon ARGV[0]
-  #Reads input file to words array
-  to_check ARGV[1]
-  #Checks the word hash
-  spell_check
-  feedback
+  #creates and fills the language hash
+  initialize_language ARGV[1]
+  #User input loop
+  puts "Please enter file name to be corrected, enter 'q' to quit"
+  print '> '
+  while user_input = STDIN.gets.chomp!
+    if user_input == 'q'
+      puts "Goodbye!"
+      break;
+    end
+    if(File.exists?(user_input))
+      to_check(user_input)
+      spell_check
+      feedback
+      $words.clear
+    else
+      puts "Filename invalid, try again"
+    end
+    puts "Please enter file name to be corrected, enter 'q' to quit"
+    print '> '
+  end
 end
 
 if __FILE__==$0
