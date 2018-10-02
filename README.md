@@ -16,6 +16,6 @@ The lexicon is constructed in the following format: A hash of first letter -> A 
 
 Once the lexicon is constructed the file to be corrected is read in and turned into a hash with the words being keys and the values being true/false
 
-Spelling is then checked for errors and word hash is updated appropriatly
+Spelling is then checked for errors and word hash is updated appropriately.
 
 Currently only the errors are printed.
