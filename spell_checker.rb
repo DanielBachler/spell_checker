@@ -44,18 +44,44 @@ def invertedIndex (folder)
   folder += "\\"
   # Iterate over each file in folder
   Find.find(folder) do |filename|
-      begin
+    begin
       # Ignore just folder name
       if !filename.eql? folder
-          # Read in each file
-          # If .docx
-          if filename.include? ".docx"
-             d = Docx::Document.open(filename)
-           else
-           f = File.read(filename)
+        # Set doc number
+        docNumber = 0
+        # Read in each file
+        # If .docx
+        file = ""
+        # Create file item based on if .txt or .docx
+        if filename.include? ".docx"
+          file = Docx::Document.open(filename)
+        else
+          file = File.read(filename)
+        end
+        # Read in file line by line
+        file.each_line do |line|
+          # Cleans line of white space
+          line.chomp!
+          #checks for punctuation and numbers
+          line.gsub!($remove_punctuation, '')
+          line.gsub!($numbers, "")
+          line.gsub!(/-/, ' ')
+          line.downcase!
+          #splits the line into words
+          words = line.split(' ').to_a
+          # Handles each word
+          words.each do |word|
+            # Check if in hash
+            if $index.include?(word)
+              current = $index[word]
+              current[docNumber]
+            else
+              $index[word] = Array.new(1, 1)
+            end
           end
-          # Tokenize text
-          puts "Read file"
+        end
+        # Tokenize text
+        puts "Read file"
       end
       rescue
           puts "Error in file name"
