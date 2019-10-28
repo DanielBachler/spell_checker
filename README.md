@@ -25,3 +25,5 @@ Currently only the errors are printed.
 To run the program, first Ruby must be installed.  
 
 `ruby spell_checker.rb words_alpha.txt langauges.txt`
+
+The order of files is the program, the lexicon, and a large example of the language to give words weight.
