@@ -5,6 +5,8 @@
 #Creates internal lexicon using this data structure, Hash -> Hash -> Array
 #Spell checks words from user input
 
+# INIT: ruby spell_checker.rb words_alpha.txt language.txt
+
 ##Global vars
 #The lexicon, or dictionary
 $lexicon = Hash.new

@@ -19,3 +19,9 @@ Once the lexicon is constructed the file to be corrected is read in and turned i
 Spelling is then checked for errors and word hash is updated appropriately
 
 Currently only the errors are printed.
+
+# INIT
+
+To run the program, first Ruby must be installed.  
+
+`ruby spell_checker.rb words_alpha.txt langauges.txt`
