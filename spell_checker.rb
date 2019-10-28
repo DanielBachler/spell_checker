@@ -7,33 +7,56 @@
 
 # INIT: ruby spell_checker.rb words_alpha.txt language.txt
 
+# Libs
+require 'yomu'
+
 ##Global vars
 #The lexicon, or dictionary
 $lexicon = Hash.new
 #The words to be corrected from text files
 $words = Hash.new
+#The inverted index for term weighting
+$index = Hash.new
 #A data source for calculating probability of words
 $language = Hash.new(0)
 #Total words
 $total_words = 0
 #Global regex for removing punctuation
 $remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#\"\\\/]/
+# Global regex for numbers
+$numbers = /[0-9]/
 #Hash to hold fixed words
 $correction = Hash.new
 
 #initializes the blank lexicon
 def initialize_lexicon
-  #Outer refrence, for outermost hash
+  #Outer reference, for outermost hash
   'a'.upto 'z' do |char|
     $lexicon[char] = Hash.new
   end
-  #Creates the internal hash that will hold array of words
-  'a'.upto 'z' do |counter|
-    'a'.upto 'z' do |internal|
-      $lexicon[counter][internal] = Array.new
+  puts "Lexicon initialized"
+end
+
+# Creates and fills the inverted index from the given corpus
+def invertedIndex (folder)
+  # Extend folder name to be used by dir
+  folder += "/*"
+  # Iterate over each file in folder
+  Dir[folder].each do |filename|
+    # Create yomu for each file
+    data = File.read filename
+    text = Yomu.read :text, data 
+    # Tokenize text
+    
+    rescue
+      puts "Error in file name"
     end
   end
-  puts "Lexicon initialized"
+  rescue
+    puts "Error in folder name"
+    exit 4
+  end
+  puts "Inverted index initialized and created"
 end
 
 #Populates the lexicon from the given file.  Assumed that the given file
@@ -310,8 +333,10 @@ def main_loop
       to_check(user_input)
       spell_check
       corrections
+      # Print correction and clear hashes for next document
       puts $correction
-      $words.clear
+      $words.clear()
+      $correction.clear()
     else
       puts "Filename invalid, try again"
     end
