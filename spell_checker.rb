@@ -8,7 +8,7 @@
 # INIT: ruby spell_checker.rb words_alpha.txt language.txt
 
 # Libs
-require 'yomu'
+require 'docx'
 
 ##Global vars
 #The lexicon, or dictionary
@@ -39,18 +39,28 @@ end
 
 # Creates and fills the inverted index from the given corpus
 def invertedIndex (folder)
+  begin
   # Extend folder name to be used by dir
-  folder += "/*"
+  folder += "\\"
   # Iterate over each file in folder
-  Dir[folder].each do |filename|
-    # Create yomu for each file
-    data = File.read filename
-    text = Yomu.read :text, data 
-    # Tokenize text
-    
-    rescue
-      puts "Error in file name"
-    end
+  Find.find(folder) do |filename|
+      begin
+      # Ignore just folder name
+      if !filename.eql? folder
+          # Read in each file
+          # If .docx
+          if filename.include? ".docx"
+             d = Docx::Document.open(filename)
+           else
+           f = File.read(filename)
+          end
+          # Tokenize text
+          puts "Read file"
+      end
+      rescue
+          puts "Error in file name"
+          puts filename + "\n"
+      end
   end
   rescue
     puts "Error in folder name"
