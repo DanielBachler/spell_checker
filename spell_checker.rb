@@ -48,7 +48,7 @@ def invertedIndex (folder)
       # Ignore just folder name
       if !filename.eql? folder
         # Set doc number
-        docNumber = 0
+        docNumber = 1
         # Read in each file
         # If .docx
         file = ""
@@ -73,15 +73,17 @@ def invertedIndex (folder)
           words.each do |word|
             # Check if in hash
             if $index.include?(word)
-              current = $index[word]
-              current[docNumber]
+              $index[word][docNumber] += 1
+            # Make new internal hash
             else
-              $index[word] = Array.new(1, 1)
+              $index[word] = Hash.new
+              $index[word][docNumber] = 1
             end
           end
         end
         # Tokenize text
         puts "Read file"
+        docNumber += 1
       end
       rescue
           puts "Error in file name"
@@ -358,23 +360,29 @@ def main_loop
   #creates and fills the language hash
   initialize_language ARGV[1]
   #User input loop
-  puts "Please enter file name to be corrected, enter 'q' to quit"
+  puts "Please enter folder that contains the corpus, enter 'q' to quit"
   print '> '
+  firstName = true
   while user_input = STDIN.gets.chomp!
     if user_input == 'q'
       puts "Goodbye!"
       break;
     end
-    if(File.exists?(user_input))
-      to_check(user_input)
-      spell_check
-      corrections
-      # Print correction and clear hashes for next document
-      puts $correction
-      $words.clear()
-      $correction.clear()
+    if !firstName
+      if(File.exists?(user_input))
+        to_check(user_input)
+        spell_check
+        corrections
+        # Print correction and clear hashes for next document
+        puts $correction
+        $words.clear()
+        $correction.clear()
+      else
+        puts "Filename invalid, try again"
+      end
     else
-      puts "Filename invalid, try again"
+      invertedIndex user_input
+      firstName = false
     end
     puts "Please enter file name to be corrected, enter 'q' to quit"
     print '> '
