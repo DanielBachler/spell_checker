@@ -9,6 +9,7 @@
 
 # Libs
 require 'docx'
+require 'find'
 
 ##Global vars
 #The lexicon, or dictionary
@@ -37,13 +38,12 @@ def initialize_lexicon
   puts "Lexicon initialized"
 end
 
+# Creates the inverted index from a given corpus (folder)
 def invertedIndex (folder)
   begin
-  # Extend folder name to be used by dir
-  #folder += "\\"
-  # Iterate over each file in folder
   # Set doc number
   docNumber = 1
+  # Iterate over each file in folder
   Find.find(folder) do |filename|
     begin
       # Ignore just folder name
@@ -111,7 +111,7 @@ def processLine (docNumber, line)
   end
 end
 
-#Populates the lexicon from the inverted index
+#Populates the lexicon from the from words_alpha
 def populate_lexicon (file_name)
   begin
     #Opens given file for lexicon
@@ -121,16 +121,17 @@ def populate_lexicon (file_name)
       #For each line in the file compile into lexicon
       file.each_line do |line|
         line.chomp!
-        #calls helper method
-        first_char, second_char = find_chars line
-        #puts "First char: #{first_char}\nSecond char: #{second_char}"
+        #Gets first character of word
+        first_char = line[0]
         #Processes word
-        if first_char != '' && second_char != ''
-          #puts "First option"
-          $lexicon[first_char][second_char].push line
-        elsif first_char != ''
-          #puts "Second option"
-          $lexicon[first_char][first_char].push line
+        if first_char != ''
+          # Get the length of the word
+          len = line.length
+          if $lexicon[first_char].has_key? len
+            $lexicon[first_char][len] << line
+          else
+            $lexicon[first_char][len] = [line]
+          end
         end
       end
     end
@@ -272,22 +273,6 @@ def corrections
   end
 end
 
-#Helper method for code clarity
-def find_chars word
-  #Sets default values
-  first_char = ''
-  second_char = ''
-  #If the word length is more than 1, sets first and second chars appropriatly
-  if word.length > 1
-    first_char = word[0]
-    second_char = word[1]
-  #If the length is one sets both to the word
-  elsif word.length == 1
-    first_char = word[0]
-    second_char = word[0]
-  end
-  return first_char, second_char
-end
 
 #Calculates the percentage of matches betwee nthe two provided words
 def match_percentage incorrect, possible
@@ -330,7 +315,7 @@ end
 
 def main_loop
   #Checks that the user has specified the correct amount of files on startup, assumes they are correct
-  if ARGV.length < 2
+  if ARGV.length < 1
     puts "Need to specify lexicon source and language source"
     exit 4
   end
@@ -338,8 +323,6 @@ def main_loop
   initialize_lexicon
   #Populates the lexicon object with the words from the given file
   populate_lexicon ARGV[0]
-  #creates and fills the language hash
-  initialize_language ARGV[1]
   #User input loop
   puts "Please enter folder that contains the corpus, enter 'q' to quit"
   print '> '
