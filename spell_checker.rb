@@ -37,58 +37,43 @@ def initialize_lexicon
   puts "Lexicon initialized"
 end
 
-# Creates and fills the inverted index from the given corpus
 def invertedIndex (folder)
   begin
   # Extend folder name to be used by dir
-  folder += "\\"
+  #folder += "\\"
   # Iterate over each file in folder
+  # Set doc number
+  docNumber = 1
   Find.find(folder) do |filename|
     begin
       # Ignore just folder name
       if !filename.eql? folder
-        # Set doc number
-        docNumber = 1
         # Read in each file
         # If .docx
-        file = ""
-        # Create file item based on if .txt or .docx
         if filename.include? ".docx"
           file = Docx::Document.open(filename)
-        else
-          file = File.read(filename)
-        end
-        # Read in file line by line
-        file.each_line do |line|
-          # Cleans line of white space
-          line.chomp!
-          #checks for punctuation and numbers
-          line.gsub!($remove_punctuation, '')
-          line.gsub!($numbers, "")
-          line.gsub!(/-/, ' ')
-          line.downcase!
-          #splits the line into words
-          words = line.split(' ').to_a
-          # Handles each word
-          words.each do |word|
-            # Check if in hash
-            if $index.include?(word)
-              $index[word][docNumber] += 1
-            # Make new internal hash
-            else
-              $index[word] = Hash.new
-              $index[word][docNumber] = 1
-            end
+          file.each_paragraph do |line|
+            processLine(docNumber, line)
           end
+        # Assume text otherwise for now
+        else
+          file = File.open(filename)
+          file_data = file.read
+          # Read in file line by line
+          file_data.each_line do |line|
+            processLine(docNumber, line)
+          end
+          file.close
         end
-        # Tokenize text
-        puts "Read file"
         docNumber += 1
       end
       rescue
           puts "Error in file name"
-          puts filename + "\n"
+          puts filename
+          puts docNumber
+          puts "\n\n"
       end
+      
   end
   rescue
     puts "Error in folder name"
@@ -97,8 +82,36 @@ def invertedIndex (folder)
   puts "Inverted index initialized and created"
 end
 
-#Populates the lexicon from the given file.  Assumed that the given file
-#is a list of english words
+# Helper function to process lines of text
+def processLine (docNumber, line)
+  line = line.to_s
+  # Cleans line of white space
+  line.chomp!
+  #checks for punctuation and numbers
+  line.gsub!($remove_punctuation, '')
+  line.gsub!($numbers, "")
+  line.gsub!(/-/, ' ')
+  line.downcase!
+  #splits the line into words
+  words = line.split(' ').to_a
+  # Handles each word
+  words.each do |word|
+    # Check if in hash
+    if $index.has_key? word
+      if $index[word].has_key? docNumber
+        $index[word][docNumber] += 1
+      else
+        $index[word][docNumber] = 1
+      end
+    # Make new internal hash
+    else
+      $index[word] = Hash.new
+      $index[word][docNumber] = 1
+    end
+  end
+end
+
+#Populates the lexicon from the inverted index
 def populate_lexicon (file_name)
   begin
     #Opens given file for lexicon
@@ -127,38 +140,6 @@ def populate_lexicon (file_name)
     puts "Error in populating lexicon"
     exit 4
   end
-end
-
-#Fills the language hash
-def initialize_language file_name
-  file = File.open(file_name, 'r')
-  until file.eof?
-    file.each_line do |line|
-      #checks for punctuation
-      line.gsub!($remove_punctuation, '')
-      line.gsub!(/-/, ' ')
-      line.downcase!
-      #splits the line into words
-      words = line.split(' ').to_a
-      #for each word increments the count
-      words.each do |word|
-        $language[word] += 1
-        $total_words += 1
-      end
-      #puts "Line: #{line}\nWords: #{words}"
-    end
-  end
-  file.close
-  #For each word in the language calculate the frequency of that word
-  $language.each do |word|
-    #Gets the count of times the word appears in the langauge.txt
-    value = word[1]
-    #Gets the frequency by dividing count by total words
-    temp = (value.to_f / $total_words.to_f).to_f
-    #Sets the value to frequency instead of count
-    $language[word[0]] = temp
-  end
-  puts "Language initialized"
 end
 
 #Reads the file of words to check
