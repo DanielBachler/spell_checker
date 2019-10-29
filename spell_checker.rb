@@ -29,6 +29,8 @@ $numbers = /[0-9]/
 #Hash to hold fixed words
 $correction = Hash.new
 
+# Lexicon functions
+
 #initializes the blank lexicon
 def initialize_lexicon
   #Outer reference, for outermost hash
@@ -38,7 +40,43 @@ def initialize_lexicon
   puts "Lexicon initialized"
 end
 
+#Populates the lexicon from the from words_alpha
+def populate_lexicon (file_name)
+  begin
+    #Opens given file for lexicon
+    file = File.open(file_name, 'r')
+    #Reads until the end of the file
+    until file.eof?
+      #For each line in the file compile into lexicon
+      file.each_line do |line|
+        line.chomp!
+        #Gets first character of word
+        first_char = line[0]
+        #Processes word
+        if first_char != ''
+          # Get the length of the word
+          len = line.length
+          if $lexicon[first_char].has_key? len
+            $lexicon[first_char][len][line] = 0
+          else
+            $lexicon[first_char][len] = Hash.new
+            $lexicon[first_char][len][line] = 0
+          end
+        end
+      end
+    end
+    file.close
+    puts "Lexicon populated"
+  rescue
+    puts "Error in populating lexicon"
+    exit 4
+  end
+end
+
+# Inverted index functions
+
 # Creates the inverted index from a given corpus (folder)
+# format: $index[term] gives hash term[docNumber] = count
 def invertedIndex (folder)
   begin
   # Set doc number
@@ -111,37 +149,56 @@ def processLine (docNumber, line)
   end
 end
 
-#Populates the lexicon from the from words_alpha
-def populate_lexicon (file_name)
+# Values into lexicon
+
+# Calculated tf-idf weight for each term in index and stores in lexicon
+# Not a true tf-idf weight, each term gets a cosine naturalized term-freq as weight
+# Converts $index to format:
+# format: $index[term] gives hash term[docNumber] = weight
+# Then 
+# format: $lexicon[first_char] gives hash first_char[len] gives len[term] = weight
+def weightsCalc
   begin
-    #Opens given file for lexicon
-    file = File.open(file_name, 'r')
-    #Reads until the end of the file
-    until file.eof?
-      #For each line in the file compile into lexicon
-      file.each_line do |line|
-        line.chomp!
-        #Gets first character of word
-        first_char = line[0]
-        #Processes word
-        if first_char != ''
-          # Get the length of the word
-          len = line.length
-          if $lexicon[first_char].has_key? len
-            $lexicon[first_char][len] << line
-          else
-            $lexicon[first_char][len] = [line]
-          end
-        end
+    # For each term calculate the term-freq
+    # Iterate over terms
+    terms = $index.keys
+    terms.each do |term|
+      # Get all doc numbers for term
+      docs = $index[term].keys
+      # Iterate over doc numbers
+      docs.each do |key|
+        newVal = 1 + Math.log($index[term][key], 10)
+        $index[term][key] = newVal
       end
     end
-    file.close
-    puts "Lexicon populated"
+    puts "Weights calculated"
+    
+    # Now calculate cosine normalized score for each term
+    terms.each do |term|
+      sum = 0
+      $index[term].each do |weight|
+        #puts weight
+        sum += weight[1]**2
+      end
+      # Cosine sum is calculated
+      consineDiv = Math.sqrt(sum)
+      
+      # Sum of normalized values
+      cosineSum = 0
+
+      # Calculate cosine normalized weight for each doc
+      $index[term].each do |weight|
+        #puts weight
+        cosineSum += weight[1] / consineDiv
+      end
+      $index[term] = cosineSum / $index[term].length
+    end
   rescue
-    puts "Error in populating lexicon"
-    exit 4
+    puts "Error calculating weights"
   end
 end
+
+# OTHER
 
 #Reads the file of words to check
 def to_check file_to_check
@@ -345,8 +402,12 @@ def main_loop
         puts "Filename invalid, try again"
       end
     else
+      # Create inverted index and tell program it is done
       invertedIndex user_input
       firstName = false
+
+      # Create weights for words in index and assign to lexicon
+      weightsCalc
     end
     puts "Please enter file name to be corrected, enter 'q' to quit"
     print '> '

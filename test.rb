@@ -62,6 +62,7 @@ def invertedIndex (folder)
   puts "Inverted index initialized and created"
 end
 
+# Helper function to process lines of text
 def processLine (docNumber, line)
   line = line.to_s
   # Cleans line of white space
@@ -90,8 +91,54 @@ def processLine (docNumber, line)
   end
 end
 
+def weightsCalc
+  begin
+    # For each term calculate the term-freq
+    # Iterate over terms
+    terms = $index.keys
+    terms.each do |term|
+      # Get all doc numbers for term
+      docs = $index[term].keys
+      # Iterate over doc numbers
+      docs.each do |key|
+        newVal = 1 + Math.log($index[term][key], 10)
+        $index[term][key] = newVal
+      end
+    end
+    puts "Weights calculated"
+    
+    # Now calculate cosine normalized score for each term
+    terms.each do |term|
+      sum = 0
+      $index[term].each do |weight|
+        #puts weight
+        sum += weight[1]**2
+      end
+      # Cosine sum is calculated
+      consineDiv = Math.sqrt(sum)
+      
+      # Sum of normalized values
+      cosineSum = 0
+
+      # Calculate cosine normalized weight for each doc
+      $index[term].each do |weight|
+        #puts weight
+        cosineSum += weight[1] / consineDiv
+      end
+      $index[term] = cosineSum / $index[term].length
+    end
+  rescue
+    puts "Error calculating weights"
+  end
+end
+
 def main_loop
   invertedIndex "corpus"
+  puts "Init index"
+  puts $index["i"]
+  weightsCalc
+  puts "\n\nConverted index"
+  puts $index["i"]
 end
 
 if __FILE__==$0
