@@ -357,7 +357,8 @@ def corrections
 end
 
 
-#Calculates the percentage of matches betwee nthe two provided words
+#Calculates the percentage of matches between the two provided words
+# TODO: Update to cosine similarity score
 def match_percentage incorrect, possible
   #Creates character arrays for both words
   incorrect_array = incorrect.split("")
@@ -436,6 +437,23 @@ def main_loop
       weightsCalc
       # Store the weights
       storeWeights
+
+      # Debug print
+      keys = $index.keys
+      sum = 0
+      max = 0
+      min = 100
+      keys.each do |key|
+        val = $index[key]
+        sum += val
+        if val > max
+          max = val
+        elsif val < min
+          min = val
+        end
+      end
+      avg = sum / keys.length
+      puts "Min score: %d\nMax score: %d\nAvg score: %d" % [min, max, avg]
     end
     puts "Please enter file name to be corrected, enter 'q' to quit"
     print '> '
