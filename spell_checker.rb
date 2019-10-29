@@ -23,7 +23,7 @@ $language = Hash.new(0)
 #Total words
 $total_words = 0
 #Global regex for removing punctuation
-$remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#\"\\\/]/
+$remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#\"\\\/\“\…\–]/
 # Global regex for numbers
 $numbers = /[0-9]/
 #Hash to hold fixed words
@@ -195,6 +195,32 @@ def weightsCalc
     end
   rescue
     puts "Error calculating weights"
+  end
+end
+
+# Store weights into lexicon
+def storeWeights
+  begin
+    terms = $index.keys
+    currentTerm = ""
+    currentLen = ""
+    terms.each do |term|
+      first_char = term[0]
+      len = term.length
+
+      currentLen = len
+      currentTerm = term
+      begin
+        $lexicon[first_char][len][term] = $index[term]
+      rescue
+        
+      end
+    end
+    puts "Weights stored"
+  rescue
+    puts "Error in storing weights"
+    puts currentLen
+    puts currentTerm
   end
 end
 
@@ -408,6 +434,8 @@ def main_loop
 
       # Create weights for words in index and assign to lexicon
       weightsCalc
+      # Store the weights
+      storeWeights
     end
     puts "Please enter file name to be corrected, enter 'q' to quit"
     print '> '
