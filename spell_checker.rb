@@ -152,47 +152,86 @@ end
 # Values into lexicon
 
 # Calculated tf-idf weight for each term in index and stores in lexicon
-# Not a true tf-idf weight, each term gets a cosine naturalized term-freq as weight
+# Uses ltc form of tf-idf weighting
+# idf weight is inverted since more common terms are more valuable
 # Converts $index to format:
 # format: $index[term] gives hash term[docNumber] = weight
 # Then 
 # format: $lexicon[first_char] gives hash first_char[len] gives len[term] = weight
 def weightsCalc
   begin
+    terms = $index.keys
+    # Calculate inverted-idf for each term
+    terms.each do |term|
+      df = 0
+      $index[term].each do |tf|
+        df += tf[1]
+      end
+      # Get number of docs
+      docs = $index[term].keys
+      docs = docs.max
+      idf = Math.log(df/docs.to_f, 10)
+      $index[term][0] = idf
+    end
+
     # For each term calculate the term-freq
     # Iterate over terms
-    terms = $index.keys
     terms.each do |term|
       # Get all doc numbers for term
       docs = $index[term].keys
       # Iterate over doc numbers
       docs.each do |key|
-        newVal = 1 + Math.log($index[term][key], 10)
-        $index[term][key] = newVal
+        if key != 0
+          val = $index[term][key]
+          newVal = 0
+          if val != 0
+            newVal = 1 + Math.log($index[term][key], 10)
+          end
+          $index[term][key] = newVal
+        end
       end
     end
-    puts "Weights calculated"
-    
+
     # Now calculate cosine normalized score for each term
     terms.each do |term|
+      idf = $index[term][0]
       sum = 0
       $index[term].each do |weight|
-        #puts weight
-        sum += weight[1]**2
+        if weight[0] != 0
+          #Gets weight and puts into divisor of cosine normalzing sum
+          sum += weight[1]**2
+        end
       end
       # Cosine sum is calculated
       consineDiv = Math.sqrt(sum)
-      
-      # Sum of normalized values
-      cosineSum = 0
 
       # Calculate cosine normalized weight for each doc
       $index[term].each do |weight|
-        #puts weight
-        cosineSum += weight[1] / consineDiv
+        if weight[0] != 0
+          #puts weight
+          $index[term][weight[0]] = weight[1] / consineDiv.to_f
+        end
       end
-      $index[term] = cosineSum / $index[term].length
+
+      # Calculate final score for each doc
+      $index[term].each do |weight|
+        if weight[0] != 0
+          $index[term][weight[0]] = idf * weight[1]
+        end
+      end
+
+      # Average score for each doc
+      avgScore = 0
+      $index[term].each do |weight|
+        if weight[0] != 0
+          avgScore += weight[1]
+        end
+      end
+
+      # Put weight in index
+      $index[term] = avgScore / $index[term].length.to_f
     end
+    puts "Weights calculated"
   rescue
     puts "Error calculating weights"
   end
@@ -397,6 +436,26 @@ def match_percentage incorrect, possible
   return overall_percentage
 end
 
+# TEMP
+def debug
+  # Debug print
+  keys = $index.keys
+  sum = 0
+  max = 0
+  min = 100
+  keys.each do |key|
+    val = $index[key]
+    sum += val
+    if val > max
+      max = val
+    elsif val < min && val != 0
+      min = val
+    end
+  end
+  avg = sum / keys.length
+  puts "Min score: %d\nMax score: %d\nAvg score: %.2f\nSum score: %d" % [min, max, avg, sum]
+end
+
 def main_loop
   #Checks that the user has specified the correct amount of files on startup, assumes they are correct
   if ARGV.length < 1
@@ -438,22 +497,9 @@ def main_loop
       # Store the weights
       storeWeights
 
-      # Debug print
-      keys = $index.keys
-      sum = 0
-      max = 0
-      min = 100
-      keys.each do |key|
-        val = $index[key]
-        sum += val
-        if val > max
-          max = val
-        elsif val < min
-          min = val
-        end
-      end
-      avg = sum / keys.length
-      puts "Min score: %d\nMax score: %d\nAvg score: %d" % [min, max, avg]
+      #TEMP
+      #debug
+      puts $index["i"]
     end
     puts "Please enter file name to be corrected, enter 'q' to quit"
     print '> '
