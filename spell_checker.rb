@@ -18,10 +18,6 @@ $lexicon = Hash.new
 $words = Hash.new
 #The inverted index for term weighting
 $index = Hash.new
-#A data source for calculating probability of words
-$language = Hash.new(0)
-#Total words
-$total_words = 0
 #Global regex for removing punctuation
 $remove_punctuation = /[\?\¿\!\¡\.\;\&\@\%\#\|\,\*\(\)\#\"\\\/\“\…\–]/
 # Global regex for numbers
@@ -29,7 +25,9 @@ $numbers = /[0-9]/
 #Hash to hold fixed words
 $correction = Hash.new
 
-# Lexicon functions
+### Functions for init of lexicon and inverted index
+
+## Lexicon functions
 
 #initializes the blank lexicon
 def initialize_lexicon
@@ -73,7 +71,7 @@ def populate_lexicon (file_name)
   end
 end
 
-# Inverted index functions
+## Inverted index functions
 
 # Creates the inverted index from a given corpus (folder)
 # format: $index[term] gives hash term[docNumber] = count
@@ -156,8 +154,6 @@ end
 # idf weight is inverted since more common terms are more valuable
 # Converts $index to format:
 # format: $index[term] gives hash term[docNumber] = weight
-# Then 
-# format: $lexicon[first_char] gives hash first_char[len] gives len[term] = weight
 def weightsCalc
   begin
     terms = $index.keys
@@ -263,7 +259,10 @@ def storeWeights
   end
 end
 
-# OTHER
+
+### Correction and checking functions
+
+## Functions for reading files and checking spelling for correctness
 
 #Reads the file of words to check
 def to_check file_to_check
@@ -291,26 +290,16 @@ def spell_check
   temp_hash = Hash.new
   #For each word hash pair
   $words.each do |word|
-    #Sets default values
-    first_char = ''
-    second_char = ''
-    #If the word is more than 1 character sets first and second characters appropriatly
-    if word[0].length > 1
-      first_char = word[0][0]
-      second_char = word[0][1]
-    #If the word length is 1 sets first and second char to word
-    elsif word[0].length == 1
-      first_char = word[0][0]
-      second_char = word[0][0]
-    end
-    #puts "First char: #{first_char}\nSecond char: #{second_char}\nWord: #{word[0]}, length = #{word[0].length}"
+    #Sets values for lexicon reading
+    first_char = word[0][0]
+    len = word[0].length
 
     #Searches lexicon for match, default is false
     match = false
     #For each word in the lexicon with the same first and second characters checks for equality
-    $lexicon[first_char][second_char].each do |check|
+    $lexicon[first_char][len].each do |check|
       #If the words are the same sets spelling to true, or correct and breaks out of loop
-      if check == word[0]
+      if check[0] == word[0]
         match = true
         break;
       end
@@ -323,6 +312,9 @@ def spell_check
     $words[temp[0]] = temp[1]
   end
 end
+
+
+## Functions for corrections of spelling
 
 #Prints the words that are spelled wrong
 def feedback
@@ -352,41 +344,39 @@ def corrections
     if word_array[1] == false
       #Sets word to the actual word, instead of array pair
       word = word_array[0]
-      #Same logic as earlier char finders, perhaps turn into seperate method
-      first_char, second_char = find_chars word
+      # Get lexicon searching vars
+      first_char = word[0]
+      len = word.length
+
       ##Find words with similar letters
-      #Saves the lenght of the word for eaiser access
+      #Saves the length of the word for eaiser access
       size = word.length
-      #Iterates over words with matching starting letters
-      $lexicon[first_char][second_char].each do |word_compare|
-        #If the size is within one of word to check, adds to possible matches
-        if word_compare.length == size - 1 || word_compare.length == size + 1 || word_compare.length == size
-          possible_matches << word_compare
+      #Iterates over words with matching starting letter and length +- 1
+      $lexicon[first_char][len].each do |word_compare|
+          possible_matches << word_compare[0]
+      end
+
+      # only check shorter words if length is greater than 1
+      if len > 1
+        $lexicon[first_char][len-1].each do |word_compare|
+          possible_matches << word_compare[0]
         end
       end
-      #Iterates over lexicon again, except only uses first character, to make sure more words are found
-      'a'.upto 'z' do |char|
-        $lexicon[first_char][char].each do |word_compare|
-          #If the size is within one of word to check, adds to possible matches
-          if word_compare.length == size - 1 || word_compare.length == size + 1 || word_compare.length == size
-            possible_matches << word_compare
-          end
-        end
+
+      $lexicon[first_char][len+1].each do |word_compare|
+        possible_matches << word_compare[0]
       end
+
       #Iterate over the possible matches, taking the match with the highest percentage
       #Hash to hold similarity
       similarity = Hash.new(0.0)
       possible_matches.each do |word_to_compare|
         similarity[word_to_compare] = match_percentage word, word_to_compare
       end
-      #Hash with the final chance, combining match_percentage and frequency
-      match_chance = Hash.new(0.0)
-      similarity.each do |match|
-        match_chance[match[0]] = (3 * match[1].to_f + $language[match[0]]) / 4
-      end
+
       best_match = ''
-      match_chance.each do |match|
-        if match[1] > match_chance[best_match]
+      similarity.each do |match|
+        if match[1] > similarity[best_match]
           best_match = match[0]
         end
       end
@@ -397,14 +387,18 @@ end
 
 
 #Calculates the percentage of matches between the two provided words
-# TODO: Update to cosine similarity score
+# TODO: Update how scoring is done
+# NEW METHOD:
+#   percentage of letters that match * tf-idf score of word
 def match_percentage incorrect, possible
   #Creates character arrays for both words
   incorrect_array = incorrect.split("")
   possible_array = possible.split("")
-  #Hashes to hold conut of each char
+
+  #Hashes to hold count of each char
   incorrect_hash = Hash.new(0)
   possible_hash = Hash.new(0)
+
   #Counts the characters in each word
   incorrect_array.each do |char|
     incorrect_hash[char] += 1
@@ -412,6 +406,7 @@ def match_percentage incorrect, possible
   possible_array.each do |char|
     possible_hash[char] += 1
   end
+  
   ##Compares the two hashes and returns similarity as a decimal
   #The overall percentage and total characters, used to calculate final percentage
   overall_percentage = 0.to_f
@@ -424,6 +419,7 @@ def match_percentage incorrect, possible
     value_possible = chars[1]
     #Sets value_incorrect to count in incorrect hash
     value_incorrect = incorrect_hash[char]
+
     #If neither value is zero calcluates similarity and adds to overall_percentage, otherwise its 0
     if value_possible != 0 && value_incorrect != 0
       min = [value_possible, value_incorrect].min
@@ -433,7 +429,8 @@ def match_percentage incorrect, possible
   end
   #Calculates similarity percentage and returns
   overall_percentage /= total_chars
-  return overall_percentage
+
+  return overall_percentage * $lexicon[possible[0]][possible.length][possible]
 end
 
 # TEMP
@@ -499,7 +496,6 @@ def main_loop
 
       #TEMP
       #debug
-      puts $index["i"]
     end
     puts "Please enter file name to be corrected, enter 'q' to quit"
     print '> '
