@@ -93,7 +93,7 @@ def invertedIndex (folder)
           end
         # Assume text otherwise for now
         else
-          file = File.open(filename)
+          file = File.open(filename, :encoding => "utf-8")
           file_data = file.read
           # Read in file line by line
           file_data.each_line do |line|
@@ -107,7 +107,7 @@ def invertedIndex (folder)
           puts "Error in file name"
           puts filename
           puts docNumber
-          puts "\n\n"
+          puts "\n"
       end
       
   end
